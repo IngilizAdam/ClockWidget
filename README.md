@@ -8,6 +8,6 @@ It's been coded with java and fully customizable without changing the source cod
 To open the app, simply double-click "ClockWidget.jar" file.
 
 To exit or change settings, just right-click on the icon which is located in the system tray and click "Open Settings".
-You can even save themes and reuse them easily!
+You can even save multiple themes and reuse them easily!
 
 You can view the source code by opening ClockWidget.java file and even make some changes on it!
