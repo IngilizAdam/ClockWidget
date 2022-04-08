@@ -12,10 +12,12 @@ import java.awt.SystemTray;
 import java.awt.TrayIcon;
 import java.awt.PopupMenu;
 import java.awt.MenuItem;
+import java.awt.Image;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -55,9 +57,10 @@ public class ClockWidget implements Runnable{
         clockFrame.setBackground(new Color(0,0,0,0));
         clockFrame.setLayout(null);
         
+        Image image = Toolkit.getDefaultToolkit().getImage("logo.png");
         SystemTray tray = SystemTray.getSystemTray();
         PopupMenu menu = new PopupMenu();
-        TrayIcon icon = new TrayIcon(Toolkit.getDefaultToolkit().getImage("logo.png"), "ClockWidget");
+        TrayIcon icon = new TrayIcon(image.getScaledInstance(new TrayIcon(image).getSize().width, -1, Image.SCALE_SMOOTH), "ClockWidget");
         MenuItem item = new MenuItem("Exit");
         MenuItem settings = new MenuItem("Open Settings");
         item.addActionListener(new ActionListener(){
@@ -139,6 +142,7 @@ public class ClockWidget implements Runnable{
         JFrame settingsFrame = new JFrame("ClockWidget Settings");
         settingsFrame.setSize(600,500);
         settingsFrame.setLocation(((int)size.getWidth()-600)/2, ((int)size.getHeight()-500)/2);
+        settingsFrame.setIconImage(new ImageIcon("logo.png").getImage());
 
         JPanel deneme = new JPanel();
         deneme.setLayout(new BoxLayout(deneme, BoxLayout.PAGE_AXIS));
