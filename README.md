@@ -1,5 +1,5 @@
 # ClockWidget
-A beautiful Clock Widget for your Desktop! (tested on Windows and Linux)
+A beautiful Clock Widget for your Desktop! (tested on Windows)
 
 This is a clock widget that I programmed in the first year of Computer Science degree.
 It's been coded with java and fully customizable without changing the source code!
