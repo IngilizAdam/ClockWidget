@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.awt.Font;
 import java.awt.Color;
 import java.awt.SystemTray;
@@ -13,7 +14,9 @@ import java.awt.TrayIcon;
 import java.awt.PopupMenu;
 import java.awt.MenuItem;
 import java.awt.Image;
+import java.awt.Desktop;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
 import java.awt.event.ActionEvent;
 
 import javax.swing.BoxLayout;
@@ -22,11 +25,14 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 import javax.swing.JWindow;
 import javax.swing.SwingConstants;
+import javax.swing.event.MouseInputAdapter;
 
 public class ClockWidget implements Runnable{
     private static int DATE_LOCATION = 0;
@@ -56,17 +62,24 @@ public class ClockWidget implements Runnable{
         clockFrame.setLocation(0,0);
         clockFrame.setBackground(new Color(0,0,0,0));
         clockFrame.setLayout(null);
+
         
         Image image = Toolkit.getDefaultToolkit().getImage("logo.png");
         SystemTray tray = SystemTray.getSystemTray();
         PopupMenu menu = new PopupMenu();
         TrayIcon icon = new TrayIcon(image.getScaledInstance(new TrayIcon(image).getSize().width, -1, Image.SCALE_SMOOTH), "ClockWidget");
-        MenuItem item = new MenuItem("Exit");
+        MenuItem exitItem = new MenuItem("Exit");
         MenuItem settings = new MenuItem("Open Settings");
-        item.addActionListener(new ActionListener(){
+        MenuItem rightClickSettings = new MenuItem("Open Right Click Settings");
+        exitItem.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
                 tray.remove(icon);
                 System.exit(0);
+            }
+        });
+        rightClickSettings.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent e) {
+                openMenuSettings();
             }
         });
         settings.addActionListener(new ActionListener(){
@@ -74,14 +87,84 @@ public class ClockWidget implements Runnable{
                 openSettings();
             }
         });
-        menu.add(item);
         menu.add(settings);
+        menu.add(rightClickSettings);
+        menu.add(exitItem);
         icon.setPopupMenu(menu);
         try{
             tray.add(icon);
         }catch(Exception e){
             System.out.println(e.getMessage());
         }
+
+        JPopupMenu clickMenu = new JPopupMenu();
+        JMenuItem desktopMenu = new JMenuItem("Desktop");
+        desktopMenu.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent e){
+                openFolder(System.getProperty("user.home") + "/Desktop", clockFrame);
+            }
+        });
+        JMenuItem exit = new JMenuItem("Exit");
+        exit.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent e){
+                tray.remove(icon);
+                System.exit(0);
+            }
+        });
+        JMenuItem[] menuItems = null;
+        try{
+            Scanner in = new Scanner(new FileInputStream("menus.tuna"));
+            int menuCount = 0;
+            String input = "";
+            while(in.hasNextLine()){
+                menuCount++;
+                input += "\n" + in.nextLine();
+            }
+            in.close();
+            input = input.trim();
+            menuItems = new JMenuItem[menuCount+2];
+            menuItems[0] = desktopMenu;
+            menuItems[menuCount+1] = exit;
+
+            for(int i = 1; i < menuCount+1; i++){
+                String[] values = input.split("::");
+                boolean newLine = false;
+                String backup = input;
+                input = "";
+                for(int j = 1; j < backup.length(); j++){
+                    if(newLine)
+                        input += backup.charAt(j);
+                    if(backup.charAt(j) == '\n')
+                        newLine = true;
+                }
+                JMenuItem temp = new JMenuItem(values[0]);
+                switch(values[1]){
+                    case "Link":
+                        temp.addActionListener(new ActionListener(){
+                            public void actionPerformed(ActionEvent e) {
+                                openURI(values[2], clockFrame);
+                            }
+                        });
+                        break;
+                    case "Folder":
+                        temp.addActionListener(new ActionListener(){
+                            public void actionPerformed(ActionEvent e) {
+                                openFolder(values[2], clockFrame);
+                            }
+                        });
+                        break;
+                }
+                menuItems[i] = temp;
+            }
+        }catch(FileNotFoundException e){
+            try{
+                PrintWriter print = new PrintWriter("menus.tuna");
+                print.close();
+                menuItems = new JMenuItem[0];
+            }catch(Exception ex){}
+        }
+        for(int i = 0; i < menuItems.length; i++)
+            clickMenu.add(menuItems[i]);
         
         Font clockFont = null;
         try{
@@ -105,6 +188,15 @@ public class ClockWidget implements Runnable{
         clockLabel.setFont(clockFont);
         clockLabel.setBounds(0,CLOCK_LOCATION,(int)size.getWidth(),(int)size.getHeight());
         clockFrame.add(clockLabel);
+
+        clockLabel.setComponentPopupMenu(clickMenu);
+
+        clockFrame.addMouseListener(new MouseInputAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e){
+                clockFrame.remove(clickMenu);
+            }
+        });
 
         JLabel secondLabel = new JLabel("", SwingConstants.CENTER);
         secondLabel.setVerticalAlignment(JLabel.TOP);
@@ -134,6 +226,22 @@ public class ClockWidget implements Runnable{
                 t1.start();
                 return;
             }
+        }
+    }
+
+    private static void openURI(String uri, JWindow clockFrame){
+        try{
+            Desktop.getDesktop().browse(new URI(uri));
+        }catch(Exception exception){
+            JOptionPane.showMessageDialog(clockFrame, exception.getMessage(), "ClockWidget", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private static void openFolder(String location, JWindow clockFrame){
+        try{
+            Desktop.getDesktop().open(new File(location));
+        }catch(Exception exception){
+            JOptionPane.showMessageDialog(clockFrame, exception.getMessage(), "ClockWidget", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -176,9 +284,7 @@ public class ClockWidget implements Runnable{
             secondColor.setText(scan.nextLine().trim() + "," + scan.nextLine().trim() + "," + scan.nextLine().trim());
             fontName.setSelectedItem(scan.nextLine().trim());
             scan.close();
-        }catch(FileNotFoundException e){
-            System.out.println(e.getMessage());
-        }
+        }catch(FileNotFoundException e){}
         
         JButton save = new JButton("Save Settings");
         save.addActionListener(new ActionListener(){
@@ -376,6 +482,123 @@ public class ClockWidget implements Runnable{
         deneme.add(saveThemePanel);
         deneme.add(selectThemePanel);
         settingsFrame.add(deneme);
+        settingsFrame.setVisible(true);
+    }
+
+    private static void openMenuSettings(){
+        Dimension size = Toolkit.getDefaultToolkit().getScreenSize();
+        JFrame settingsFrame = new JFrame("ClockWidget Settings");
+        settingsFrame.setSize(1000,500);
+        settingsFrame.setLocation(((int)size.getWidth()-1000)/2, ((int)size.getHeight()-500)/2);
+        settingsFrame.setIconImage(new ImageIcon("logo.png").getImage());
+
+        String input = "";
+        int menuCount = 0;
+        try{
+            Scanner in = new Scanner(new FileInputStream("menus.tuna"));
+            while(in.hasNextLine()){
+                menuCount++;
+                input += in.nextLine() + "\n";
+            }
+            in.close();
+            input = input.trim();
+        }catch(FileNotFoundException e){
+            try{
+                PrintWriter print = new PrintWriter("menus.tuna");
+                print.close();
+            }catch(Exception ex){}
+        }
+        
+        String[] menus = input.split("\n");
+        String[] menuNames = new String[menus.length];
+        for(int i = 0; i < menuNames.length; i++){
+            menuNames[i] = menus[i].split("::")[0];
+        }
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
+        JPanel[] panels = new JPanel[menuCount];
+        JComboBox<String>[] menuName = new JComboBox[menuCount];
+        for(int i = 0; i < panels.length; i++){
+            panels[i] = new JPanel();
+            JLabel order = new JLabel(i+1+". ");
+            JButton remove = new JButton("Remove");
+            remove.addActionListener(new ActionListener(){
+                public void actionPerformed(ActionEvent e) {
+                    int whichPanel = 0;
+                    for(int j = 0; j < panels.length; j++){
+                        if(panels[j] != null && panels[j] == remove.getParent()){
+                            whichPanel = j;
+                            break;
+                        }
+                    }
+                    int result = JOptionPane.showConfirmDialog(settingsFrame, menuNames[whichPanel] + " will be deleted.\nAre you sure?", "ClockWidget", JOptionPane.YES_NO_OPTION);
+                    if(result != JOptionPane.YES_OPTION){
+                        return;
+                    }
+                    System.out.println(menus[whichPanel]);
+                    try{
+                        PrintWriter newFile = new PrintWriter("menus.tuna");
+                        for(int j = 0; j < menus.length; j++){
+                            if(!menus[whichPanel].equals(menus[j]))
+                                newFile.println(menus[j]);
+                        }
+                        newFile.close();
+                        settingsFrame.setVisible(false);
+                        settingsFrame.dispose();
+                        openMenuSettings();
+                        t1.interrupt();
+                    }catch(FileNotFoundException exception){
+                        JOptionPane.showMessageDialog(settingsFrame, exception.getMessage(), "ClockWidget", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            });
+            menuName[i] = new JComboBox<String>(menuNames);
+            menuName[i].setSelectedIndex(i);
+            panels[i].add(order);
+            panels[i].add(menuName[i]);
+            panels[i].add(remove);
+            panel.add(panels[i]);
+        }
+        JTextField nameField = new JTextField(10), typeField = new JTextField(5), addressField = new JTextField(20);
+        JTextField[] textFields = {nameField,typeField,addressField};
+        JLabel[] labels = {new JLabel("Name: "), new JLabel("Type (Link-Folder): "), new JLabel("Address: ")};
+        JPanel newdata = new JPanel();
+        for(int i = 0; i < 3; i++){
+            newdata.add(labels[i]);
+            newdata.add(textFields[i]);
+        }
+        JButton save = new JButton("Save");
+        save.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent e) {
+                try{
+                    String name = nameField.getText().trim();
+                    String type = typeField.getText().trim();
+                    String address = addressField.getText().trim();
+                    String newData = ""; 
+                    for(int i = 0; i < menuName.length; i++)
+                        newData += menus[menuName[i].getSelectedIndex()] + "\n";
+                    if(name.length() != 0 && type.length() != 0 && address.length() != 0)
+                        newData += name + "::" + type + "::" + address + "::";
+                    PrintWriter print = new PrintWriter("menus.tuna");
+                    print.print(newData);
+                    print.close();
+                    if(name.length() != 0 && type.length() != 0 && address.length() != 0)
+                        JOptionPane.showMessageDialog(settingsFrame, "New Menu Saved", "ClockWidget", JOptionPane.INFORMATION_MESSAGE);
+                    else
+                        JOptionPane.showMessageDialog(settingsFrame, "Order Saved", "ClockWidget", JOptionPane.INFORMATION_MESSAGE);
+                    settingsFrame.setVisible(false);
+                    settingsFrame.dispose();
+                    openMenuSettings();
+                    t1.interrupt();
+                }catch(Exception exception){
+                    JOptionPane.showMessageDialog(settingsFrame, exception.getMessage(), "ClockWidget", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        newdata.add(save);
+        panel.add(newdata);
+
+        settingsFrame.add(panel);
         settingsFrame.setVisible(true);
     }
 
