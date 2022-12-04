@@ -47,14 +47,10 @@ public class ClockWidget implements Runnable{
     private static String FONT_NAME = "OdudoMono-SemiBold.ttf";
     
     private static Thread t1 = null;
-    private static Thread t2 = null;
 
     public static void main(String[] args) {
         t1 = new Thread(new ClockWidget());
         t1.start();
-
-        t2 = new Thread(new EventListener());
-        t2.start();
     }
 
     public void run(){
